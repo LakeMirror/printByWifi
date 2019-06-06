@@ -1,0 +1,145 @@
+<html>
+<head>
+  <script src="./js/jquery-1.10.2.js"></script>
+  <script src="./js/handsontable.full.js"></script>
+  <link rel="stylesheet" media="screen"
+        href="./css/handsontable.full.css">
+  <script src="./js/lodash.js"></script>
+  <script
+    src="./js/underscore.string.js"></script>
+  <script src="./js/moment.js"></script>
+  <script src="./js/numeral.js"></script>
+  <script src="./js/numeric.js"></script>
+  <script src="./js/md5.js"></script>
+  <script src="./js/jstat.js"></script>
+  <script src="./js/formula.js"></script>
+  <script src="./js/parser.js"></script>
+  <script src="./js/ruleJS.js"></script>
+  <script src="./js/handsontable.formula.js"></script>
+  <script type="text/javascript">
+    var excelData;
+    var isReady = false;
+    function setExcelData(val, row) {
+          if (val === null || val === '') {
+            excelData = [['暂无数据']];
+            return;
+          }
+          console.log(val.toString());
+          var temp = val.toString().split(',');
+          var result = [];
+          var inner = [];
+          for (var i = 0; i < temp.length; i++) {
+            if ((i % row) === 0 && i !== 0) {
+    		  console.log(i + ':' + inner);
+              result[i / row - 1] = inner;
+              inner = [];
+            }
+            inner[Math.abs(i % row)] = temp[i];
+          }
+    	  result[row - 1] = inner;
+          console.log(result);
+          excelData = result;
+        }
+
+    function generateExcel() {
+
+      console.log('开始生成' );
+      if (excelData === null) {
+        return;
+      }
+      var data1 = excelData;
+      function negativeValueRenderer(instance, td, row, col, prop, value, cellProperties) {
+        Handsontable.renderers.TextRenderer.apply(this, arguments);
+
+        var escaped = Handsontable.helper.stringify(value),
+          newvalue;
+
+        if (escaped.indexOf('return') === 0) {
+          // 计算列为只读
+          // cellProperties.readOnly = true;
+          td.style.background = '#EEE';
+          newvalue = document.createElement('span');
+          $.ajax({
+            // 提交数据的类型 POST GET
+            type: "POST",
+            // 提交的网址
+            url: "/services/CSEngine.ashx",
+            // 提交的数据
+            data: {code: value, code2: escaped},
+            // 返回数据的格式
+            datatype: "html",//"xml", "html", "script", "json", "jsonp", "text".
+            // 在请求之前调用的函数
+            // beforeSend: function () { $("#msg").html("logining"); },
+            // 成功返回之后调用的函数
+            success: function (data) {
+              // $("#msg").html(decodeURI(data));
+              newvalue.innerHTML = decodeURI(data);
+            },
+            // 调用执行后调用的函数
+            complete: function (XMLHttpRequest, textStatus) {
+              // alert(XMLHttpRequest.responseText);
+              // alert(textStatus);
+              // HideLoading();
+            },
+            // 调用出错执行的函数
+            error: function () {
+              // 请求出错处理
+              // alert('error')
+            }
+          });
+
+
+          Handsontable.Dom.addEvent(newvalue, 'mousedown', function (e) {
+            e.preventDefault(); // prevent selection quirk
+          });
+
+          Handsontable.Dom.empty(td);
+          td.appendChild(newvalue);
+        }
+        // if row contains negative number
+        if (parseInt(value, 10) < 0) {
+          // add class "negative"
+          td.className = 'negative';
+        }
+
+
+      }
+
+
+      // 类似excel进行拖放，公式会变
+      var container1 = $('#handsontable-code');
+      Handsontable.renderers.registerRenderer('negativeValueRenderer', negativeValueRenderer);
+      container1.handsontable({
+        data: data1,
+        minSpareRows: 1,
+        colHeaders: false,
+        rowHeaders: false,
+        contextMenu: true,
+
+        formulas: true,
+        cells: function (row, col, prop) {
+          var cellProperties = {};
+          var escaped = Handsontable.helper.stringify(this.instance.getData()[row][col]);
+          if (escaped.indexOf('return') === 0) {
+            cellProperties.renderer = "negativeValueRenderer";
+          }
+
+
+          return cellProperties;
+        }
+      });
+    }
+
+  </script>
+
+  <title>测试 Excel 打印</title>
+</head>
+<body>
+<div id="body">
+  <div id="handsontable-code"></div>
+</div>
+</body>
+
+
+</html>
+
